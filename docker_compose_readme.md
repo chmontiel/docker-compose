@@ -239,6 +239,80 @@ When Grafana starts, it automatically reads these configs and imports your dashb
 
 ---
 
+## 🗂️ Exporting & Importing Grafana Dashboards (Deliverable)
+
+You’ll submit exported dashboard JSON(s) in this repo. There are **two ways** to export: via **UI** (manual) or **HTTP API** (scriptable). Both are documented here.
+
+### ✅ Method A — Export via Grafana UI (simple)
+1. Open your dashboard in Grafana (e.g., http://localhost:3000).
+2. Click **Share** (up‑arrow icon) → **Export** tab.
+3. Choose **Export to JSON**.
+   - Optionally enable **Export for sharing externally** (embeds data‑source references for portability).
+4. Save the file into the repo, e.g. `grafana/dashboards/system_overview.json`.
+
+**Import via UI:** Dashboards → **New** → **Import** → Upload JSON → choose Prometheus data source → **Import**.
+
+---
+
+### ⚙️ Method B — Export via API (repeatable / for CI)
+
+> Assumes local Grafana at `http://localhost:3000` and basic auth `admin:admin`. Replace as needed or use an API token.
+
+**Find the dashboard UID:** it’s in the URL `/d/<UID>/...` when the dashboard is open.
+
+**Export one dashboard (curl):**
+```bash
+curl -u admin:admin \
+  http://localhost:3000/api/dashboards/uid/<UID> \
+  -o grafana/dashboards/<UID>.json
+```
+
+**Export one dashboard (PowerShell):**
+```powershell
+$uid = "<UID>"
+$auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("admin:admin"))
+Invoke-WebRequest \
+  -Headers @{ Authorization = "Basic $auth" } \
+  -Uri "http://localhost:3000/api/dashboards/uid/$uid" \
+  -OutFile "grafana/dashboards/$uid.json"
+```
+
+**Bulk export all dashboards (PowerShell):**
+```powershell
+$auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("admin:admin"))
+$dashes = Invoke-RestMethod -Headers @{ Authorization = "Basic $auth" } \
+  -Uri "http://localhost:3000/api/search?type=dash-db" -Method Get
+$dashes | ForEach-Object {
+  $uid = $_.uid
+  $out = "grafana/dashboards/$uid.json"
+  Invoke-WebRequest -Headers @{ Authorization = "Basic $auth" } \
+    -Uri "http://localhost:3000/api/dashboards/uid/$uid" -OutFile $out
+}
+```
+> This saves each dashboard’s full JSON to `grafana/dashboards/` so you can commit them.
+
+**Import via API (curl):**
+```bash
+curl -u admin:admin -H "Content-Type: application/json" \
+  -X POST http://localhost:3000/api/dashboards/db \
+  -d @grafana/dashboards/<UID>.json
+```
+
+---
+
+### 🔁 Auto‑load exported dashboards on startup (provisioning)
+If you place exported JSON files under `grafana/dashboards/` and keep the provisioning mounts:
+```yaml
+  grafana:
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+```
+…and your `dashboards.yaml` points to `/var/lib/grafana/dashboards`, Grafana will **auto‑import** those JSON files on container start.
+
+---
+
 ## 🧾 Documentation: Running, Viewing Logs, and Troubleshooting
 
 ### Running the Stack
@@ -297,27 +371,23 @@ It means Prometheus cannot reach a scrape target.
    ```bash
    docker ps
    ```
-
 2. **Test endpoint manually:**
    ```bash
    docker exec -it <prometheus-container> sh
-   wget -qO- http://host.docker.internal:9100/metrics
+   wget -qO- http://host.docker.internal:9182/metrics || true
+   exit
    ```
-
 3. **Check target config:**
    In `prometheus.yml`:
    ```yaml
    scrape_configs:
-     - job_name: 'node'
+     - job_name: 'windows'
        static_configs:
-         - targets: ['host.docker.internal:9100']
+         - targets: ['host.docker.internal:9182']
    ```
-
 4. **Verify in Prometheus UI:**
-   Visit: [http://localhost:9090/targets](http://localhost:9090/targets)
-   - Green = Up
-   - Red = Down (connection issue)
-
+   Visit: http://localhost:9090/targets
+   - Green = Up; Red = Down (connection issue)
 5. **Restart Prometheus:**
    ```bash
    docker compose restart prometheus
@@ -327,7 +397,7 @@ It means Prometheus cannot reach a scrape target.
 | Problem | Solution |
 |----------|-----------|
 | Grafana connection refused | Use `http://prometheus:9090` as the data source URL |
-| Prometheus target down | Check exporter IP or port |
+| Prometheus target down | Check exporter IP or port; firewall; service is running |
 | Dashboard not appearing | Verify provisioning folder mount paths |
 | Data missing after restart | Ensure volumes (`prom_data`, `grafana_data`) exist |
 
@@ -337,17 +407,10 @@ It means Prometheus cannot reach a scrape target.
 
 | Concept | Description |
 |----------|--------------|
-| **Docker Compose** | Manages multi-container applications. |
-| **Network** | Private virtual LAN for containers. |
-| **Service Discovery** | Containers find each other by name (via Docker DNS). |
-| **depends_on** | Ensures one container starts before another. |
-| **Volumes** | Persistent storage for container data. |
-| **Provisioning** | Automatically imports Grafana dashboards and data sources. |
-| **Detached Mode (-d)** | Runs containers in background. |
-| **Logs** | View real-time service output. |
-| **Troubleshooting** | Debug Prometheus target discovery issues easily. |
-
----
-
-With this setup, your Prometheus and Grafana containers will start together, communicate securely, persist data, auto-load dashboards, and can be easily monitored and debugged using Docker Compose logs and commands.
+| **UI Export** | Share → Export → JSON; commit to `grafana/dashboards/`. |
+| **API Export** | `GET /api/dashboards/uid/<UID>` save JSON; script for bulk. |
+| **Provisioning** | Auto-load dashboards from `/var/lib/grafana/dashboards`. |
+| **Compose Up (-d)** | Start services in background; `down` stops. |
+| **Logs** | `docker compose logs [-f] <service>` to debug. |
+| **Targets** | Prometheus → `/targets` to check scrape health. |
 
