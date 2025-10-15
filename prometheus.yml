@@ -1,0 +1,37 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # --- Prometheus self-scrape (inside Compose network)
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+
+  # --- Windows exporter on your host (service runs on Windows listening on 9182)
+  # If you installed windows_exporter as a Windows service:
+  - job_name: 'windows'
+    static_configs:
+      - targets: ['host.docker.internal:9182']
+
+  # --- Blackbox exporter (container) probing HTTP(S) endpoints
+  # Place your endpoints under "targets:" below.
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]   # matches a module defined in blackbox.yml
+    static_configs:
+      - targets:
+          - https://example.com
+          - http://grafana:3000         # probe the Grafana service by name
+          - http://prometheus:9090      # probe Prometheus' HTTP
+    relabel_configs:
+      # Take target (e.g., https://example.com) and pass it as the 'target' query param to /probe
+      - source_labels: [__address__]
+        target_label: __param_target
+      # Set Prometheus 'instance' label to the probed target value for nice legends
+      - source_labels: [__param_target]
+        target_label: instance
+      # Finally, replace the scrape address with the blackbox exporter container
+      - target_label: __address__
+        replacement: blackbox:9115

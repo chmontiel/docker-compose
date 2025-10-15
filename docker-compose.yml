@@ -1,0 +1,48 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prom_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks: [monitoring]
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    ports:
+      - "8000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      # (optional but recommended if you set up provisioning earlier)
+      # - ./grafana/provisioning:/etc/grafana/provisioning
+      # - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on: [prometheus]   # Grafana starts after Prometheus
+    networks: [monitoring]
+
+  blackbox:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    command:
+      - '--config.file=/etc/blackbox_exporter/config.yml'
+    networks: [monitoring]
+
+volumes:
+  prom_data:
+  grafana_data:
+
+networks:
+  monitoring:
+    driver: bridge
