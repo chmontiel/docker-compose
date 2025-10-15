@@ -1,0 +1,12 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus             # This UID is referenced by your dashboards
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090 # service name + port from docker-compose.yml
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: "15s"
