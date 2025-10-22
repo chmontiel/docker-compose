@@ -1,0 +1,136 @@
+No worries—there are a couple of legit ways to go from your Excel to rows in SQL Server. Since you’re not sure what your instructor wants, here are two clean workflows you can pick from. Both keep your file local (nothing gets uploaded).
+
+
+---
+
+Option A — Excel builds the INSERT statements (quick + explicit)
+
+What you need: your dbo.StatsDump table already created.
+
+1. In Excel, add a new column named SQL_Insert (to the right of your data).
+In the first data row (row 2), paste this formula and press Enter:
+
+
+
+=CONCAT(
+"INSERT INTO dbo.StatsDump (StatID, OwnerType, ItemName, StatName, OwningComputer, CompID, StatType, ItemAlias, Unit, UnitStr, Name) VALUES (",
+IF(A2="","NULL",CONCAT("N'",SUBSTITUTE(A2,"'","''"),"'")),", ",
+IF(B2="","NULL",CONCAT("N'",SUBSTITUTE(B2,"'","''"),"'")),", ",
+IF(C2="","NULL",CONCAT("N'",SUBSTITUTE(C2,"'","''"),"'")),", ",
+IF(D2="","NULL",CONCAT("N'",SUBSTITUTE(D2,"'","''"),"'")),", ",
+IF(E2="","NULL",CONCAT("N'",SUBSTITUTE(E2,"'","''"),"'")),", ",
+IF(F2="","NULL",F2),", ",
+IF(G2="","NULL",G2),", ",
+IF(H2="","NULL",CONCAT("N'",SUBSTITUTE(H2,"'","''"),"'")),", ",
+IF(I2="","NULL",I2),", ",
+IF(J2="","NULL",CONCAT("N'",SUBSTITUTE(J2,"'","''"),"'")),", ",
+IF(K2="","NULL",CONCAT("N'",SUBSTITUTE(K2,"'","''"),"'")),
+");"
+)
+
+2. Double-click the fill handle to copy the formula down for all rows.
+Each row now displays a complete INSERT … VALUES (…) line.
+
+
+3. In SSMS (connected to your SQL Server), select your database:
+
+
+
+USE dbGaine;
+GO
+
+4. Copy the generated INSERT lines from Excel and paste into a new query window.
+(Optional safety)
+
+
+
+BEGIN TRAN;
+-- paste INSERT lines here
+-- SELECT COUNT(*) FROM dbo.StatsDump;  -- quick check
+COMMIT;  -- or ROLLBACK if something looks off
+
+5. Verify:
+
+
+
+SELECT TOP (5) * FROM dbo.StatsDump;
+SELECT COUNT(*) AS RowsLoaded FROM dbo.StatsDump;
+
+> Note: use a login with write permissions. Your grafana user is read-only, so run the inserts as sa or another write-enabled account.
+
+
+
+
+---
+
+Option B — Import the file (fewer moving parts, no SQL text needed)
+
+What you need: Excel saved as CSV.
+
+1. In Excel: File → Save As → CSV (Comma delimited). Use UTF-8 if available.
+Save to a path on the SQL Server machine, e.g. C:\temp\statsdump.csv.
+
+
+2. In SSMS, use either:
+
+
+
+Tasks → Import Flat File… (simple wizard), or
+
+Tasks → Import Data… (SQL Server Import and Export Wizard)
+
+
+Follow the prompts:
+
+Data source: your CSV file
+
+Destination table: dbo.StatsDump
+
+Check column mappings (types match your table), then run.
+
+
+OR do it with T-SQL:
+
+USE dbGaine;
+GO
+
+BULK INSERT dbo.StatsDump
+FROM 'C:\temp\statsdump.csv'
+WITH (
+    FIRSTROW = 2,                 -- skip header row
+    FIELDTERMINATOR = ',',        -- CSV delimiter
+    ROWTERMINATOR = '0x0A',       -- newline (Linux/mac) or use '\r\n' for Windows
+    CODEPAGE = '65001',           -- UTF-8
+    KEEPNULLS                     -- keep empty cells as NULL
+);
+
+Verify:
+
+SELECT TOP (5) * FROM dbo.StatsDump;
+SELECT COUNT(*) AS RowsLoaded FROM dbo.StatsDump;
+
+
+---
+
+Which should you choose?
+
+Option A (Excel → INSERT text): If the assignment wants to see actual SQL insert statements you generated from Excel. Very transparent.
+
+Option B (Import Wizard / BULK INSERT): If they just want the data loaded, with less fiddling.
+
+
+
+---
+
+Common gotchas & fixes
+
+Permission denied inserting → You used the read-only grafana user. Switch to sa or a writer role.
+
+Dates/Unicode look wrong → Save CSV as UTF-8 and use CODEPAGE='65001'.
+
+Blank cells → In Option A, blanks become NULL; in Option B, include KEEPNULLS.
+
+Column order in CSV must match table order, or use a staging table then INSERT … SELECT into dbo.StatsDump.
+
+
+If you tell me which route you’re taking (A or B), I can tailor a tiny checklist specific to your sheet and environment.
