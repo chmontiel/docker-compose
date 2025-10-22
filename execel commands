@@ -1,0 +1,15 @@
+=CONCAT(
+"INSERT INTO dbo.StatsDump (StatID, OwnerType, ItemName, StatName, OwningComputer, CompID, StatType, ItemAlias, Unit, UnitStr, Name) VALUES (",
+IF(A2="","NULL",CONCAT("N'",SUBSTITUTE(A2,"'","''"),"'")),", ",
+IF(B2="","NULL",CONCAT("N'",SUBSTITUTE(B2,"'","''"),"'")),", ",
+IF(C2="","NULL",CONCAT("N'",SUBSTITUTE(C2,"'","''"),"'")),", ",
+IF(D2="","NULL",CONCAT("N'",SUBSTITUTE(D2,"'","''"),"'")),", ",
+IF(E2="","NULL",CONCAT("N'",SUBSTITUTE(E2,"'","''"),"'")),", ",
+IF(F2="","NULL",F2),", ",
+IF(G2="","NULL",G2),", ",
+IF(H2="","NULL",CONCAT("N'",SUBSTITUTE(H2,"'","''"),"'")),", ",
+IF(I2="","NULL",I2),", ",
+IF(J2="","NULL",CONCAT("N'",SUBSTITUTE(J2,"'","''"),"'")),", ",
+IF(K2="","NULL",CONCAT("N'",SUBSTITUTE(K2,"'","''"),"'")),
+");"
+)
