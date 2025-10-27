@@ -407,3 +407,19 @@ GROUP BY
 ORDER BY
     HostName,
     MetricCount DESC;
+
+SELECT
+    CASE OwnerType
+        WHEN 1 THEN 'Disk IO'
+        WHEN 3 THEN 'Service Up'
+        ELSE CONCAT('Type ', CONVERT(VARCHAR(10), OwnerType))
+    END AS MetricCategory,
+    COUNT(*) AS MetricCount
+FROM dbo.StatsDump
+GROUP BY
+    CASE OwnerType
+        WHEN 1 THEN 'Disk IO'
+        WHEN 3 THEN 'Service Up'
+        ELSE CONCAT('Type ', CONVERT(VARCHAR(10), OwnerType))
+    END
+ORDER BY MetricCount DESC;
