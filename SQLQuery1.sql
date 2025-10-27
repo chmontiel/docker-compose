@@ -388,3 +388,10 @@ SELECT
         LEN(Name)
     ) AS UserName
 FROM dbo.StatsDump;
+
+SELECT
+    LEFT(Name, CHARINDEX('-', Name + '-') - 1) AS HostName,
+    COUNT(*) AS MetricCount
+FROM dbo.StatsDump
+GROUP BY LEFT(Name, CHARINDEX('-', Name + '-') - 1)
+ORDER BY MetricCount DESC;
