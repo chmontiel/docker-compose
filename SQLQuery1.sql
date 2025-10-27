@@ -423,3 +423,13 @@ GROUP BY
         ELSE CONCAT('Type ', CONVERT(VARCHAR(10), OwnerType))
     END
 ORDER BY MetricCount DESC;
+
+
+
+SELECT
+    LEFT(Name, CHARINDEX('-', Name + '-') - 1) AS HostName,
+    COUNT(*) AS ServiceUpChecks
+FROM dbo.StatsDump
+WHERE OwnerType = 3
+GROUP BY LEFT(Name, CHARINDEX('-', Name + '-') - 1)
+ORDER BY ServiceUpChecks DESC;
