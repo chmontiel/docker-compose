@@ -376,3 +376,15 @@ SUBSTRING(
     CHARINDEX('-', Name + '-') + 1,
     LEN(Name)
 )                                                AS UserName
+
+SELECT
+    -- Host part (everything before the first dash)
+    LEFT(Name, CHARINDEX('-', Name + '-') - 1) AS HostName,
+
+    -- User part (everything after the first dash)
+    SUBSTRING(
+        Name,
+        CHARINDEX('-', Name + '-') + 1,
+        LEN(Name)
+    ) AS UserName
+FROM dbo.StatsDump;
