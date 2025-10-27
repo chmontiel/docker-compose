@@ -364,3 +364,15 @@ ORDER BY DrivesMonitored DESC;
 -- Suggested Grafana panel title:
 -- Top 10 Hosts by Drive Monitoring Coverage
 --------------------------------------------------------------------------------
+
+
+
+-- Host part before the dash
+LEFT(Name, CHARINDEX('-', Name + '-') - 1)        AS HostName,
+
+-- User part after the dash
+SUBSTRING(
+    Name,
+    CHARINDEX('-', Name + '-') + 1,
+    LEN(Name)
+)                                                AS UserName
