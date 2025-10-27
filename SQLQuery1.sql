@@ -433,3 +433,12 @@ FROM dbo.StatsDump
 WHERE OwnerType = 3
 GROUP BY LEFT(Name, CHARINDEX('-', Name + '-') - 1)
 ORDER BY ServiceUpChecks DESC;
+
+
+SELECT
+    LEFT(Name, CHARINDEX('-', Name + '-') - 1) AS HostName,
+    COUNT(*) AS DiskIOMetrics
+FROM dbo.StatsDump
+WHERE OwnerType = 1
+GROUP BY LEFT(Name, CHARINDEX('-', Name + '-') - 1)
+ORDER BY DiskIOMetrics DESC;
