@@ -455,3 +455,93 @@ FROM dbo.StatsDump AS s
 WHERE s.StatName IN ('Free Bytes', 'Used Bytes', 'Percent Free')
 GROUP BY s.Name, s.StatName
 ORDER BY s.Name, DiskMetric;
+
+
+
+-- Categorize ItemName types
+SELECT
+    CASE
+        WHEN s.ItemName LIKE 'C:%' OR s.ItemName LIKE 'D:%' OR s.ItemName LIKE 'E:%' THEN 'Disk Volume'
+        WHEN s.ItemName LIKE 'c:\\ClusterStorage%' THEN 'Cluster Storage'
+        WHEN s.ItemName LIKE 'RDS-%' OR s.ItemName LIKE 'SOFS%' OR s.ItemName LIKE 'SHPV%' OR s.ItemName LIKE 'SAF-%' THEN 'Host'
+        WHEN LEN(s.ItemName) < 20 THEN 'Windows Service'
+        ELSE 'Other'
+    END AS ItemCategory,
+    COUNT(*) AS CountPerCategory
+FROM dbo.StatsDump AS s
+WHERE s.ItemName IS NOT NULL
+GROUP BY
+    CASE
+        WHEN s.ItemName LIKE 'C:%' OR s.ItemName LIKE 'D:%' OR s.ItemName LIKE 'E:%' THEN 'Disk Volume'
+        WHEN s.ItemName LIKE 'c:\\ClusterStorage%' THEN 'Cluster Storage'
+        WHEN s.ItemName LIKE 'RDS-%' OR s.ItemName LIKE 'SOFS%' OR s.ItemName LIKE 'SHPV%' OR s.ItemName LIKE 'SAF-%' THEN 'Host'
+        WHEN LEN(s.ItemName) < 20 THEN 'Windows Service'
+        ELSE 'Other'
+    END
+ORDER BY CountPerCategory DESC;
+
+
+-- Unique ItemNames per Host
+SELECT
+    s.Name AS HostName,
+    COUNT(DISTINCT s.ItemName) AS UniqueItems
+FROM dbo.StatsDump AS s
+GROUP BY s.Name
+ORDER BY UniqueItems DESC;
+
+
+-- Metrics per drive volume
+SELECT
+    s.ItemName AS Drive,
+    s.StatName AS Metric,
+    COUNT(*) AS CountPerMetric
+FROM dbo.StatsDump AS s
+WHERE s.ItemName LIKE '_:%'
+GROUP BY s.ItemName, s.StatName
+ORDER BY s.ItemName, CountPerMetric DESC;
+
+
+-- Top cluster storage paths being monitored
+SELECT
+    s.ItemName AS ClusterPath,
+    COUNT(*) AS CountPerPath
+FROM dbo.StatsDump AS s
+WHERE s.ItemName LIKE 'c:\\ClusterStorage%'
+GROUP BY s.ItemName
+ORDER BY CountPerPath DESC;
+
+
+-- Most frequently monitored Windows services
+SELECT
+    s.ItemName AS ServiceName,
+    COUNT(*) AS CountPerService
+FROM dbo.StatsDump AS s
+WHERE LEN(s.ItemName) < 20
+  AND s.ItemName NOT LIKE '%:%'
+  AND s.ItemName NOT LIKE 'c:\\%'
+  AND s.ItemName NOT LIKE 'RDS-%'
+  AND s.ItemName NOT LIKE 'SOFS%'
+  AND s.ItemName NOT LIKE 'SHPV%'
+  AND s.ItemName NOT LIKE 'SAF-%'
+GROUP BY s.ItemName
+ORDER BY CountPerService DESC;
+
+-- Host vs Item Category matrix (for a heatmap)
+SELECT
+    s.Name AS HostName,
+    CASE
+        WHEN s.ItemName LIKE '_:%' THEN 'Disk Volume'
+        WHEN s.ItemName LIKE 'c:\\ClusterStorage%' THEN 'Cluster Storage'
+        WHEN s.ItemName LIKE 'RDS-%' OR s.ItemName LIKE 'SOFS%' OR s.ItemName LIKE 'SHPV%' OR s.ItemName LIKE 'SAF-%' THEN 'Host'
+        ELSE 'Windows Service'
+    END AS ItemCategory,
+    COUNT(DISTINCT s.ItemName) AS UniqueItems
+FROM dbo.StatsDump AS s
+GROUP BY s.Name,
+         CASE
+            WHEN s.ItemName LIKE '_:%' THEN 'Disk Volume'
+            WHEN s.ItemName LIKE 'c:\\ClusterStorage%' THEN 'Cluster Storage'
+            WHEN s.ItemName LIKE 'RDS-%' OR s.ItemName LIKE 'SOFS%' OR s.ItemName LIKE 'SHPV%' OR s.ItemName LIKE 'SAF-%' THEN 'Host'
+            ELSE 'Windows Service'
+         END
+ORDER BY s.Name;
