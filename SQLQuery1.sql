@@ -442,3 +442,16 @@ FROM dbo.StatsDump
 WHERE OwnerType = 1
 GROUP BY LEFT(Name, CHARINDEX('-', Name + '-') - 1)
 ORDER BY DiskIOMetrics DESC;
+
+-- Disk monitoring coverage per host
+-- You can turn this into a stacked bar per host showing how many
+-- disk-related stats they're reporting.
+
+SELECT
+    s.Name        AS HostName,
+    s.StatName    AS DiskMetric,
+    COUNT(*)      AS RowsForThatMetric
+FROM dbo.StatsDump AS s
+WHERE s.StatName IN ('Free Bytes', 'Used Bytes', 'Percent Free')
+GROUP BY s.Name, s.StatName
+ORDER BY s.Name, DiskMetric;
